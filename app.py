@@ -3,6 +3,7 @@ app.py — Streamlit UI for SmartSQL.
 Ask a question in plain English and get SQL + results from the ecommerce database.
 """
 
+import io
 import streamlit as st
 import pandas as pd
 from agent import generate_sql
@@ -181,10 +182,36 @@ if st.button("🚀 Generate & Run", type="primary") and question:
 
     st.subheader("📊 Results")
     if rows:
-        # Show row count
-        st.caption(f"{len(rows)} rows returned")
         df = pd.DataFrame(rows, columns=columns)
-        st.dataframe(df, use_container_width=True)
+
+        # ── Row count + Download buttons ────────────────────
+        count_col, csv_col, excel_col = st.columns([4, 1, 1])
+
+        with count_col:
+            st.caption(f"{len(rows)} row{'s' if len(rows) != 1 else ''} returned")
+
+        with csv_col:
+            st.download_button(
+                label="⬇ CSV",
+                data=df.to_csv(index=False).encode("utf-8"),
+                file_name="smartsql_results.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        with excel_col:
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Results")
+            st.download_button(
+                label="⬇ Excel",
+                data=buffer.getvalue(),
+                file_name="smartsql_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+
+        st.dataframe(df, width="stretch")
     else:
         st.info("Query returned no results.")
 
